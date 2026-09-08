@@ -20,7 +20,7 @@
 
 ![Кнопки Yandex и Markets в Google](docs/images/google-to-yandex.png)
 
-**Поддерживаемые сайты:** страницы поиска Google на доменах `google.com`, `google.ru`, `google.co.uk`, `google.de`, `google.fr`, `google.es`, `google.it`, `google.ca`, `google.com.au`, `google.com.tw`, `google.co.jp`, `google.com.br` и `google.com.mx`.
+**Поддерживаемые сайты:** страницы поиска Google на региональных доменах, например `google.com`, `google.ru`, `google.co.uk`, `google.de`, `google.fr`, `google.es`, `google.it`, `google.ca`, `google.com.au`, `google.com.tw`, `google.co.jp`, `google.com.br` и `google.com.mx`. Этот список не исчерпывающий: все поддерживаемые региональные домены перечислены в строках `@match` установленного скрипта.
 
 Скрипт добавляет рядом со строкой поиска кнопки **Yandex** и **Markets**. Первая открывает тот же запрос в Яндексе, вторая — в Ozon, Wildberries и Яндекс Маркете.
 
