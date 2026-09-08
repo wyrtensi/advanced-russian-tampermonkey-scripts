@@ -85,11 +85,35 @@
             : location.hostname.includes('market.yandex.') ? 'yandex'
                 : location.hostname.includes('avito.') ? 'avito' : 'aliexpress';
     const current = MARKETPLACES[currentKey];
+    const MIN_FALLBACK_INPUT_WIDTH = 240;
     let selected = new Set([currentKey]);
     let mountedInput;
     let mountedForm;
+    let activeBinding;
     let allowNativeSubmit = false;
     let repositionWidget = () => {};
+    let observedInput;
+    const inputResizeObserver = typeof ResizeObserver === 'function'
+        ? new ResizeObserver(() => repositionWidget())
+        : null;
+
+    function isInputOccluded(input, box) {
+        if (box.bottom <= 0 || box.top >= innerHeight || box.right <= 0 || box.left >= innerWidth) return true;
+        if (typeof document.elementsFromPoint !== 'function') return false;
+
+        const sampleX = Math.min(box.right - 2, box.left + box.width * 0.75);
+        const sampleY = Math.min(box.bottom - 2, box.top + box.height / 2);
+        const widget = document.getElementById('mps-root');
+        const topElement = document.elementsFromPoint(sampleX, sampleY)
+            .find((element) => element !== widget && !widget?.contains(element));
+        if (!topElement) return false;
+
+        const form = input.closest('form');
+        return topElement !== input
+            && !input.contains(topElement)
+            && !topElement.contains(input)
+            && !form?.contains(topElement);
+    }
 
     function getVisibleInput() {
         const candidates = new Map();
@@ -100,15 +124,16 @@
         });
 
         const ranked = [...candidates.entries()].flatMap(([input, selectorIndex]) => {
-            if (input.offsetParent === null || input.disabled || input.readOnly) return [];
+            if (input.offsetParent === null || input.disabled || input.readOnly || input.getAttribute('aria-hidden') === 'true') return [];
             const box = input.getBoundingClientRect();
-            if (box.width < 1 || box.height < 1) return [];
+            if (box.width < 1 || box.height < 1 || isInputOccluded(input, box)) return [];
 
             const form = input.closest('form');
             const hasSearchButton = Boolean(form && current.searchButtons.some((selector) =>
                 [...form.querySelectorAll(selector)].some((button) => button.offsetParent !== null && !button.disabled)
             ));
-            const isStrongCandidate = selectorIndex === 0 || hasSearchButton || box.width >= 240;
+            // Small fallback inputs are usually filters, while primary search bars have stronger selectors, a submit button, or enough width.
+            const isStrongCandidate = selectorIndex === 0 || hasSearchButton || box.width >= MIN_FALLBACK_INPUT_WIDTH;
             if (!isStrongCandidate) return [];
 
             const selectorScore = (current.inputs.length - selectorIndex) * 10000;
@@ -329,66 +354,122 @@
         return host;
     }
 
-    function bindSearchInput(input, form) {
-        const side = 'Left';
-        const dataKey = `mpsBase${side}`;
-        if (!input.dataset[dataKey]) {
-            input.dataset[dataKey] = String(parseFloat(getComputedStyle(input)[`padding${side}`]) || 0);
+    function unbindSearchInput() {
+        if (!activeBinding) {
+            mountedInput = undefined;
+            mountedForm = undefined;
+            return;
         }
-        const trigger = document.getElementById('mps-root')?.shadowRoot?.querySelector('.mps-trigger');
-        const triggerWidth = Math.ceil(trigger?.getBoundingClientRect().width || 96);
-        const clearance = currentKey === 'wildberries' ? -4 : currentKey === 'aliexpress' ? 0 : currentKey === 'avito' ? 11 : currentKey === 'yandex' ? 10 : 8;
-        input.style.setProperty(`padding-${side.toLowerCase()}`, `${Number(input.dataset[dataKey]) + triggerWidth + clearance}px`, 'important');
 
-        if (!input.dataset.mpsBound) {
-            input.dataset.mpsBound = 'true';
-            input.addEventListener('input', render);
-            input.addEventListener('keydown', (event) => {
-                if (event.key !== 'Enter' || event.isComposing) return;
-                event.preventDefault();
-                event.stopImmediatePropagation();
-                runSearch();
-            }, true);
-        }
-        if (form && !form.dataset.mpsBound) {
-            form.dataset.mpsBound = 'true';
-            form.addEventListener('submit', (event) => {
-                if (allowNativeSubmit) {
-                    allowNativeSubmit = false;
-                    return;
-                }
-                event.preventDefault();
-                event.stopImmediatePropagation();
-                runSearch();
-            }, true);
-        }
-        const buttonScope = currentKey === 'aliexpress' && form ? form : document;
+        const { input, form, buttons, controller, paddingProperty, originalPaddingValue, originalPaddingPriority } = activeBinding;
+        controller.abort();
+        if (originalPaddingValue) input.style.setProperty(paddingProperty, originalPaddingValue, originalPaddingPriority);
+        else input.style.removeProperty(paddingProperty);
+        delete input.dataset.mpsBaseLeft;
+        delete input.dataset.mpsBound;
+        if (form) delete form.dataset.mpsBound;
+        buttons.forEach((button) => delete button.dataset.mpsBound);
+
+        inputResizeObserver?.disconnect();
+        observedInput = undefined;
+        activeBinding = undefined;
+        mountedInput = undefined;
+        mountedForm = undefined;
+    }
+
+    function bindSearchButtons(binding) {
+        const { form, buttons, controller } = binding;
+        const hasButtonInForm = Boolean(form && current.searchButtons.some((selector) => form.querySelector(selector)));
+        const buttonScope = hasButtonInForm ? form : document;
         current.searchButtons.forEach((selector) => {
             buttonScope.querySelectorAll(selector).forEach((button) => {
-                if (button.offsetParent === null || button.dataset.mpsBound) return;
+                if (button.offsetParent === null || buttons.has(button)) return;
+                buttons.add(button);
                 button.dataset.mpsBound = 'true';
                 button.addEventListener('click', (event) => {
                     event.preventDefault();
                     event.stopImmediatePropagation();
                     runSearch();
-                }, true);
+                }, { capture: true, signal: controller.signal });
             });
         });
+    }
+
+    function bindSearchInput(input, form) {
+        const side = 'Left';
+        const paddingProperty = `padding-${side.toLowerCase()}`;
+        if (activeBinding && (activeBinding.input !== input || activeBinding.form !== form)) {
+            unbindSearchInput();
+        }
+
+        if (!activeBinding) {
+            const controller = new AbortController();
+            activeBinding = {
+                input,
+                form,
+                controller,
+                buttons: new Set(),
+                paddingProperty,
+                basePadding: parseFloat(getComputedStyle(input)[`padding${side}`]) || 0,
+                originalPaddingValue: input.style.getPropertyValue(paddingProperty),
+                originalPaddingPriority: input.style.getPropertyPriority(paddingProperty)
+            };
+            input.dataset.mpsBaseLeft = String(activeBinding.basePadding);
+            input.dataset.mpsBound = 'true';
+            input.addEventListener('input', render, { signal: controller.signal });
+            input.addEventListener('keydown', (event) => {
+                if (event.key !== 'Enter' || event.isComposing) return;
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                runSearch();
+            }, { capture: true, signal: controller.signal });
+
+            if (form) {
+                form.dataset.mpsBound = 'true';
+                form.addEventListener('submit', (event) => {
+                    if (allowNativeSubmit) {
+                        allowNativeSubmit = false;
+                        return;
+                    }
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                    runSearch();
+                }, { capture: true, signal: controller.signal });
+            }
+        }
+
+        mountedInput = input;
+        mountedForm = form;
+        if (inputResizeObserver && observedInput !== input) {
+            inputResizeObserver.disconnect();
+            inputResizeObserver.observe(input);
+            observedInput = input;
+        }
+
+        const trigger = document.getElementById('mps-root')?.shadowRoot?.querySelector('.mps-trigger');
+        const triggerWidth = Math.ceil(trigger?.getBoundingClientRect().width || 96);
+        const clearance = currentKey === 'wildberries' ? -4 : currentKey === 'aliexpress' ? 0 : currentKey === 'avito' ? 11 : currentKey === 'yandex' ? 10 : 8;
+        const paddingValue = `${activeBinding.basePadding + triggerWidth + clearance}px`;
+        if (input.style.getPropertyValue(paddingProperty) !== paddingValue || input.style.getPropertyPriority(paddingProperty) !== 'important') {
+            input.style.setProperty(paddingProperty, paddingValue, 'important');
+        }
+        bindSearchButtons(activeBinding);
     }
 
     function mount() {
         const input = getVisibleInput();
         if (!input) {
+            unbindSearchInput();
             repositionWidget();
             return;
         }
         const form = input.closest('form');
-        mountedInput = input;
-        mountedForm = form;
 
         if (currentKey === 'ozon' && form) {
             const nativeScope = form.querySelector('[title="Везде"]');
-            if (nativeScope) nativeScope.style.setProperty('display', 'none', 'important');
+            if (nativeScope && (nativeScope.style.getPropertyValue('display') !== 'none' || nativeScope.style.getPropertyPriority('display') !== 'important')) {
+                nativeScope.style.setProperty('display', 'none', 'important');
+            }
         }
         bindSearchInput(input, form);
         bindSuggestions();
@@ -401,12 +482,11 @@
         repositionWidget = () => {
             const liveInput = getVisibleInput();
             if (!liveInput || !liveInput.isConnected) {
+                unbindSearchInput();
                 widget.style.display = 'none';
                 return;
             }
             const liveForm = liveInput.closest('form');
-            mountedInput = liveInput;
-            mountedForm = liveForm;
             bindSearchInput(liveInput, liveForm);
             const box = liveInput.getBoundingClientRect();
             if (box.width < 1 || box.height < 1) {
@@ -430,8 +510,17 @@
     bindSuggestions();
 
     const startWidget = () => {
-        const observer = new MutationObserver(mount);
-        observer.observe(document.documentElement, { childList: true, subtree: true });
+        const observer = new MutationObserver((mutations) => {
+            const widget = document.getElementById('mps-root');
+            if (widget && mutations.every((mutation) => mutation.target === widget || widget.contains(mutation.target))) return;
+            mount();
+        });
+        observer.observe(document.documentElement, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['class', 'style', 'hidden', 'disabled', 'readonly', 'aria-hidden']
+        });
         mount();
     };
 

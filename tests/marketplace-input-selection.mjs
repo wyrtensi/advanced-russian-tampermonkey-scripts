@@ -17,15 +17,28 @@ const chromeCandidates = process.platform === 'win32'
     ]
   : ['google-chrome', 'chromium', 'chromium-browser'];
 
+function canRun(executable) {
+  return new Promise((resolve) => {
+    const child = spawn(executable, ['--version'], { stdio: 'ignore' });
+    child.on('error', () => resolve(false));
+    child.on('close', (code) => resolve(code === 0));
+  });
+}
+
 async function findBrowser() {
-  if (process.platform !== 'win32') return chromeCandidates[0];
+  if (process.env.MPS_BROWSER_BIN) {
+    if (await canRun(process.env.MPS_BROWSER_BIN)) return process.env.MPS_BROWSER_BIN;
+    throw new Error(`MPS_BROWSER_BIN is not executable: ${process.env.MPS_BROWSER_BIN}`);
+  }
   for (const candidate of chromeCandidates) {
-    try {
-      await access(candidate);
-      return candidate;
-    } catch {
-      // Try the next known browser location.
-    }
+    if (process.platform === 'win32') {
+      try {
+        await access(candidate);
+        return candidate;
+      } catch {
+        // Try the next known browser location.
+      }
+    } else if (await canRun(candidate)) return candidate;
   }
   throw new Error('Chrome or Edge is required for the marketplace DOM test.');
 }
@@ -70,6 +83,64 @@ const fixtures = {
         <button data-testid="searchButton" type="submit">Найти</button>
       </form>`,
   },
+  ozon: {
+    host: 'www.ozon.localhost',
+    expected: 'main',
+    html: `
+      <form id="secondary-form"><input id="secondary" name="text" style="width:180px;height:40px"></form>
+      <form id="main-form" action="/search">
+        <span title="Везде">Везде</span>
+        <input id="main" name="text" placeholder="Искать на Ozon" style="width:650px;height:50px">
+        <button type="submit">Найти</button>
+      </form>`,
+  },
+  yandex: {
+    host: 'market.yandex.localhost',
+    expected: 'main',
+    html: `
+      <form id="secondary-form"><input id="secondary" name="text" style="width:180px;height:40px"></form>
+      <form id="main-form">
+        <input id="main" name="text" placeholder="Найти товары" style="width:650px;height:50px">
+        <button type="submit">Найти</button>
+      </form>`,
+  },
+  aliexpress: {
+    host: 'aliexpress.localhost',
+    expected: 'main',
+    html: `
+      <form id="secondary-form"><input id="secondary" placeholder="Поиск по заказам" style="width:180px;height:40px"></form>
+      <form id="main-form" class="RedSearchBar_root">
+        <input id="main" placeholder="Поиск товаров" style="width:650px;height:50px">
+        <button type="submit">Найти</button>
+      </form>`,
+  },
+  'ozon-search-occluded': {
+    host: 'www.ozon.localhost',
+    expected: 'hidden',
+    setup: `setTimeout(() => {
+      document.body.insertAdjacentHTML('beforeend', '<div id="image-viewer" style="position:fixed;inset:0;z-index:1000000;background:white"></div>');
+    }, 200);`,
+    html: `
+      <form id="secondary-form"><input id="secondary" name="text" style="width:180px;height:40px"></form>
+      <form id="main-form" action="/search">
+        <input id="main" name="text" placeholder="Искать на Ozon" style="width:650px;height:50px">
+        <button type="submit">Найти</button>
+      </form>`,
+  },
+  'ozon-viewer-closed': {
+    host: 'www.ozon.localhost',
+    expected: 'main',
+    setup: `setTimeout(() => {
+      document.body.insertAdjacentHTML('beforeend', '<div id="image-viewer" style="position:fixed;inset:0;z-index:1000000;background:white"></div>');
+    }, 200);
+    setTimeout(() => document.getElementById('image-viewer').remove(), 400);`,
+    html: `
+      <form id="secondary-form"><input id="secondary" name="text" style="width:180px;height:40px"></form>
+      <form id="main-form" action="/search">
+        <input id="main" name="text" placeholder="Искать на Ozon" style="width:650px;height:50px">
+        <button type="submit">Найти</button>
+      </form>`,
+  },
   'avito-main-removed': {
     host: 'www.avito.localhost',
     expected: 'hidden',
@@ -81,6 +152,32 @@ const fixtures = {
       <form id="main-form">
         <input id="main" data-marker="search-form/suggest" placeholder="Поиск по объявлениям" style="width:650px;height:50px">
         <button data-marker="search-form/submit-button" type="submit">Найти</button>
+      </form>`,
+  },
+  'avito-main-hidden': {
+    host: 'www.avito.localhost',
+    expected: 'hidden',
+    setup: "setTimeout(() => { document.getElementById('main-form').style.display = 'none'; }, 200);",
+    html: `
+      <form id="secondary-form">
+        <input id="secondary" data-marker="search-form/number" placeholder="Поиск по номеру" style="width:180px;height:40px">
+      </form>
+      <form id="main-form">
+        <input id="main" data-marker="search-form/suggest" placeholder="Поиск по объявлениям" style="width:650px;height:50px">
+        <button data-marker="search-form/submit-button" type="submit">Найти</button>
+      </form>`,
+  },
+  'avito-main-inserted': {
+    host: 'www.avito.localhost',
+    expected: 'rebound',
+    setup: `setTimeout(() => {
+      document.body.insertAdjacentHTML('afterbegin', \
+        '<form id="main-form"><input id="main" data-marker="search-form/suggest" placeholder="Поиск по объявлениям" style="width:650px;height:50px"><button data-marker="search-form/submit-button" type="submit">Найти</button></form>');
+    }, 200);`,
+    html: `
+      <form id="secondary-form">
+        <input id="secondary" data-marker="search-form/legacy" placeholder="Поиск в разделе" style="width:300px;height:40px">
+        <button id="secondary-button" data-marker="search-form/submit-button" type="button">Искать в разделе</button>
       </form>`,
   },
 };
@@ -111,9 +208,18 @@ const server = createServer((request, response) => {
           const main = document.getElementById('main');
           const secondary = document.getElementById('secondary');
           const widget = document.getElementById('mps-root');
+          const keydown = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+          const submit = new Event('submit', { bubbles: true, cancelable: true });
+          const click = new MouseEvent('click', { bubbles: true, cancelable: true });
+          secondary.dispatchEvent(keydown);
+          document.getElementById('secondary-form').dispatchEvent(submit);
+          document.getElementById('secondary-button')?.dispatchEvent(click);
           const mainSelected = main?.dataset.mpsBound === 'true' && secondary.dataset.mpsBound !== 'true';
-          const hidden = widget?.style.display === 'none' && secondary.dataset.mpsBound !== 'true';
-          document.documentElement.dataset.testResult = hidden ? 'hidden' : mainSelected ? 'main' : 'secondary';
+          const hidden = widget?.style.display === 'none' && main?.dataset.mpsBound !== 'true'
+            && secondary.dataset.mpsBound !== 'true';
+          const rebound = ${fixture.expected === 'rebound'} && mainSelected && secondary.style.paddingLeft === ''
+            && !keydown.defaultPrevented && !submit.defaultPrevented && !click.defaultPrevented;
+          document.documentElement.dataset.testResult = rebound ? 'rebound' : hidden ? 'hidden' : mainSelected ? 'main' : 'secondary';
         }, 700);
       </script>
     </body></html>`);

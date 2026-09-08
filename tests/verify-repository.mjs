@@ -113,3 +113,5 @@ for (const path of images) {
 }
 
 console.log(`Verified ${scripts.length} userscripts.`);
+
+await import('./marketplace-input-selection.mjs');
