@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Marketplace Cross Search
 // @namespace    https://github.com/wyrtensi/advanced-russian-tampermonkey-scripts
-// @version      1.0.5
+// @version      1.0.6
 // @description  Поиск запроса сразу по нескольким маркетплейсам.
 // @author       Wyrtensi
 // @homepageURL  https://github.com/wyrtensi/advanced-russian-tampermonkey-scripts
@@ -92,12 +92,32 @@
     let repositionWidget = () => {};
 
     function getVisibleInput() {
-        for (const selector of current.inputs) {
-            const candidate = [...document.querySelectorAll(selector)]
-                .find((item) => item.offsetParent !== null && !item.disabled);
-            if (candidate) return candidate;
-        }
-        return null;
+        const candidates = new Map();
+        current.inputs.forEach((selector, selectorIndex) => {
+            document.querySelectorAll(selector).forEach((input) => {
+                if (!candidates.has(input)) candidates.set(input, selectorIndex);
+            });
+        });
+
+        const ranked = [...candidates.entries()].flatMap(([input, selectorIndex]) => {
+            if (input.offsetParent === null || input.disabled || input.readOnly) return [];
+            const box = input.getBoundingClientRect();
+            if (box.width < 1 || box.height < 1) return [];
+
+            const form = input.closest('form');
+            const hasSearchButton = Boolean(form && current.searchButtons.some((selector) =>
+                [...form.querySelectorAll(selector)].some((button) => button.offsetParent !== null && !button.disabled)
+            ));
+            const isStrongCandidate = selectorIndex === 0 || hasSearchButton || box.width >= 240;
+            if (!isStrongCandidate) return [];
+
+            const selectorScore = (current.inputs.length - selectorIndex) * 10000;
+            const buttonScore = hasSearchButton ? 1000000 : 0;
+            return [{ input, score: buttonScore + selectorScore + Math.min(box.width, 2000) }];
+        });
+
+        ranked.sort((left, right) => right.score - left.score);
+        return ranked[0]?.input || null;
     }
 
     function getQuery() {
@@ -358,7 +378,10 @@
 
     function mount() {
         const input = getVisibleInput();
-        if (!input) return;
+        if (!input) {
+            repositionWidget();
+            return;
+        }
         const form = input.closest('form');
         mountedInput = input;
         mountedForm = form;

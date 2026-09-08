@@ -22,7 +22,7 @@
 
 | Скрипт | Коротко | Сайты | Версия |
 | --- | --- | --- | --- |
-| [1. Marketplace Cross Search](#1-marketplace-cross-search) | Один запрос — несколько маркетплейсов | Ozon, Wildberries, Яндекс Маркет, Авито, AliExpress | 1.0.5 |
+| [1. Marketplace Cross Search](#1-marketplace-cross-search) | Один запрос — несколько маркетплейсов | Ozon, Wildberries, Яндекс Маркет, Авито, AliExpress | 1.0.6 |
 | [2. Google → Yandex Search Button](#2-google--yandex-search-button) | Кнопки **Yandex** и **Markets** в Google | Google, 58 региональных доменов | 1.1.1 |
 | [3. Yandex → Google Search Button](#3-yandex--google-search-button) | Кнопки **Google** и **Markets** в Яндексе | Яндекс, 13 доменов, и Дзен | 1.1.1 |
 

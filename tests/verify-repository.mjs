@@ -29,7 +29,7 @@ for (const path of scripts) {
   assert.doesNotMatch(source, /\r/);
 }
 
-const readme = await readFile(new URL('../README.md', import.meta.url), 'utf8');
+const readme = (await readFile(new URL('../README.md', import.meta.url), 'utf8')).replaceAll('\r\n', '\n');
 const scriptsSectionStart = readme.indexOf('## Скрипты\n');
 const beginnerSectionStart = readme.indexOf('## Установка для новичка\n');
 assert.notEqual(scriptsSectionStart, -1, 'Missing scripts section');
