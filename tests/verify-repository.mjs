@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 
 const repository = 'https://github.com/wyrtensi/advanced-russian-tampermonkey-scripts';
 const rawRoot = 'https://raw.githubusercontent.com/wyrtensi/advanced-russian-tampermonkey-scripts/main';
@@ -20,6 +20,21 @@ for (const path of scripts) {
   assert.match(source, new RegExp(`// @downloadURL\\s+${escapedRawUrl}`));
   assert.match(source, new RegExp(`// @updateURL\\s+${escapedRawUrl}`));
   assert.doesNotMatch(source, /\r/);
+}
+
+const readme = await readFile(new URL('../README.md', import.meta.url), 'utf8');
+for (const path of scripts) {
+  assert.ok(readme.includes(`${rawRoot}/${path}`), `Missing install link for ${path}`);
+}
+
+const images = [
+  'docs/images/marketplace-cross-search.png',
+  'docs/images/google-to-yandex.png',
+  'docs/images/yandex-to-google.png',
+];
+for (const path of images) {
+  await access(new URL(`../${path}`, import.meta.url));
+  assert.ok(readme.includes(path), `Missing README image reference for ${path}`);
 }
 
 console.log(`Verified ${scripts.length} userscripts.`);
