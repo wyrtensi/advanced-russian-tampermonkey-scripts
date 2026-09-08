@@ -37,9 +37,9 @@ assert.notEqual(beginnerSectionStart, -1, 'Missing beginner installation section
 assert.ok(scriptsSectionStart < beginnerSectionStart, 'Scripts section must precede beginner installation section');
 const scriptsSection = readme.slice(scriptsSectionStart, beginnerSectionStart);
 const expectedHeadings = [
-  '### 1. 🛒 Marketplace Cross Search',
-  '### 2. 🔎 Google → Yandex Search Button',
-  '### 3. 🔎 Yandex → Google Search Button',
+  '### 1. Marketplace Cross Search',
+  '### 2. Google → Yandex Search Button',
+  '### 3. Yandex → Google Search Button',
 ];
 const images = [
   'docs/images/marketplace-cross-search.png',
