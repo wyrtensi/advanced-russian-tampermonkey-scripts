@@ -41,14 +41,54 @@ const expectedHeadings = [
   '### 2. 🔎 Google → Yandex Search Button',
   '### 3. 🔎 Yandex → Google Search Button',
 ];
+const images = [
+  'docs/images/marketplace-cross-search.png',
+  'docs/images/google-to-yandex.png',
+  'docs/images/yandex-to-google.png',
+];
 let previousHeadingIndex = -1;
+const headingIndices = [];
 for (const heading of expectedHeadings) {
   const headingIndex = scriptsSection.indexOf(`${heading}\n`);
   assert.ok(headingIndex > previousHeadingIndex, `Missing or out-of-order heading: ${heading}`);
   assert.equal((scriptsSection.match(new RegExp(`^${escapeRegExp(heading)}$`, 'gm')) ?? []).length, 1);
+  headingIndices.push(headingIndex);
   previousHeadingIndex = headingIndex;
 }
-for (const label of ['**Что делает:**', '**Где работает:**', '**Как пользоваться:**']) {
+const labels = ['**Что делает:**', '**Где работает:**', '**Как пользоваться:**'];
+for (const [index, headingIndex] of headingIndices.entries()) {
+  const separatorIndex = scriptsSection.indexOf('\n---\n', headingIndex);
+  const cardEnd = separatorIndex === -1 ? scriptsSection.length : separatorIndex;
+  const card = scriptsSection.slice(headingIndex, cardEnd);
+  const summaryMatches = card.match(/^> [^\n]+$/gm) ?? [];
+  assert.equal(summaryMatches.length, 1, `Expected one-line summary in ${expectedHeadings[index]}`);
+  const summaryIndex = card.indexOf(summaryMatches[0]);
+
+  const rawUrl = `${rawRoot}/${scripts[index]}`;
+  const badgeAlt = `Установить ${badgeNames[index]} через Tampermonkey`;
+  const matchingBadgePattern = new RegExp(
+    `\\[!\\[${escapeRegExp(badgeAlt)}\\]\\([^\\n)]+\\)\\]\\(${escapeRegExp(rawUrl)}\\)`,
+  );
+  assert.equal((card.match(matchingBadgePattern) ?? []).length, 1, `Missing matching badge in ${expectedHeadings[index]}`);
+  const badgeIndex = card.search(matchingBadgePattern);
+
+  assert.equal((card.match(new RegExp(escapeRegExp(images[index]), 'g')) ?? []).length, 1, `Missing matching image in ${expectedHeadings[index]}`);
+  const imageIndex = card.indexOf(images[index]);
+
+  const labelIndices = labels.map((label) => {
+    assert.equal((card.match(new RegExp(escapeRegExp(label), 'g')) ?? []).length, 1, `Missing label ${label} in ${expectedHeadings[index]}`);
+    return card.indexOf(label);
+  });
+  assert.ok(
+    summaryIndex < badgeIndex &&
+      badgeIndex < imageIndex &&
+      imageIndex < labelIndices[0] &&
+      labelIndices[0] < labelIndices[1] &&
+      labelIndices[1] < labelIndices[2],
+    `Incorrect card order in ${expectedHeadings[index]}`,
+  );
+}
+for (const label of labels) {
   assert.equal((scriptsSection.match(new RegExp(escapeRegExp(label), 'g')) ?? []).length, scripts.length);
 }
 assert.equal((scriptsSection.match(/\n---\n/g) ?? []).length, 2);
@@ -67,11 +107,6 @@ for (const [index, path] of scripts.entries()) {
   assert.match(readme, badgeButtonPattern, `Missing badge button for ${badgeNames[index]}`);
 }
 
-const images = [
-  'docs/images/marketplace-cross-search.png',
-  'docs/images/google-to-yandex.png',
-  'docs/images/yandex-to-google.png',
-];
 for (const path of images) {
   await access(new URL(`../${path}`, import.meta.url));
   assert.ok(readme.includes(path), `Missing README image reference for ${path}`);
