@@ -34,7 +34,7 @@
             accent: '#005bff',
             soft: '#e8f0ff',
             searchUrl: (query) => `https://www.ozon.ru/search/?text=${encodeURIComponent(query)}&from_global=true`,
-            inputs: ['input[name="text"][placeholder*="Ozon"]', 'input[name="text"]'],
+            inputs: ['form[action="/search"] input[name="text"]', 'input[name="text"][placeholder*="Ozon" i]'],
             searchButtons: ['form[action="/search"] button[type="submit"]'],
             suggestions: ['a[data-search-keyboard-item]', '[role="option"]', '[class*="suggest"] a', '[class*="suggest"] button']
         },
@@ -44,7 +44,7 @@
             accent: '#cb11ab',
             soft: '#fbe8f8',
             searchUrl: (query) => `https://www.wildberries.ru/catalog/0/search.aspx?search=${encodeURIComponent(query)}`,
-            inputs: ['input[name="search"]', 'input[type="search"]', 'input[placeholder*="искать" i]'],
+            inputs: ['input[name="search"]', 'form:has(button[data-testid="searchButton"], .search-catalog__btn) input[type="search"]'],
             searchButtons: ['button[data-testid="searchButton"]', '.search-catalog__btn'],
             suggestions: ['[data-suggestions-item]', '[role="option"]', '[class*="suggest"] a', '[class*="suggest"] button']
         },
@@ -54,7 +54,7 @@
             accent: '#f0b800',
             soft: '#fff6c9',
             searchUrl: (query) => `https://market.yandex.ru/search?text=${encodeURIComponent(query)}`,
-            inputs: ['input[name="text"]', 'input[placeholder*="Найти"]', 'input[type="search"]'],
+            inputs: ['form:has(button[type="submit"]) input[name="text"]', 'input[placeholder*="Найти" i]'],
             searchButtons: ['form button[type="submit"]'],
             suggestions: ['[role="option"]', '[class*="suggest"] a', '[class*="suggest"] button']
         },
@@ -64,7 +64,7 @@
             accent: '#00a34a',
             soft: '#e7f7ec',
             searchUrl: (query) => `https://www.avito.ru/rossiya?q=${encodeURIComponent(query)}`,
-            inputs: ['input[name="q"]', 'input[data-marker*="search-form"]', 'input[placeholder*="Поиск"]'],
+            inputs: ['input[name="q"]', 'input[data-marker="search-form/suggest"]', 'input[placeholder*="Поиск по объявлениям" i]'],
             searchButtons: ['[data-marker="search-form/submit-button"]', 'button[data-marker*="search-form/submit"]'],
             suggestions: ['[role="option"]', '[data-marker*="suggest"]', '[class*="suggest"] a', '[class*="suggest"] button']
         },
@@ -74,7 +74,7 @@
             accent: '#ff4747',
             soft: '#ffeded',
             searchUrl: (query) => `https://aliexpress.ru/wholesale?SearchText=${encodeURIComponent(query)}`,
-            inputs: ['input[name="SearchText"]', 'input[placeholder*="Поиск"]', 'input[type="search"]'],
+            inputs: ['input[name="SearchText"]', '[class*="RedSearchBar"] input[placeholder*="Поиск" i]'],
             searchButtons: ['[class*="RedSearchBar"] button', 'button[type="submit"]'],
             suggestions: ['[role="option"]', '[class*="RedSearchBar_Item__container"]', '[class*="suggest"] a', '[class*="suggest"] button']
         }
@@ -85,9 +85,6 @@
             : location.hostname.includes('market.yandex.') ? 'yandex'
                 : location.hostname.includes('avito.') ? 'avito' : 'aliexpress';
     const current = MARKETPLACES[currentKey];
-    const MIN_FALLBACK_INPUT_WIDTH = 240;
-    const INPUT_SETTLE_DELAY = 250;
-    const SECONDARY_INPUT_HINT = /(?:по номеру|по заказ|по артикул|по продавц|в фильтр|в раздел|\bsku\b|\bfilter\b|\border\b)/i;
     let selected = new Set([currentKey]);
     let mountedInput;
     let mountedForm;
@@ -95,9 +92,6 @@
     let allowNativeSubmit = false;
     let repositionWidget = () => {};
     let observedInput;
-    let pendingInput;
-    let pendingForm;
-    let pendingInputTimer;
     let mountTimer;
     const inputResizeObserver = typeof ResizeObserver === 'function'
         ? new ResizeObserver(() => repositionWidget())
@@ -138,16 +132,6 @@
             const hasSearchButton = Boolean(form && current.searchButtons.some((selector) =>
                 [...form.querySelectorAll(selector)].some((button) => button.offsetParent !== null && !button.disabled)
             ));
-            const inputHint = [input.name, input.placeholder, input.getAttribute('aria-label'), input.dataset.marker]
-                .filter(Boolean)
-                .join(' ');
-            const confidence = Number(selectorIndex === 0)
-                + Number(hasSearchButton)
-                + Number(box.width >= MIN_FALLBACK_INPUT_WIDTH);
-            // Require multiple main-search signals and reject common filter/search-within-page wording.
-            const isStrongCandidate = confidence >= 2 && !SECONDARY_INPUT_HINT.test(inputHint);
-            if (!isStrongCandidate) return [];
-
             const selectorScore = (current.inputs.length - selectorIndex) * 10000;
             const buttonScore = hasSearchButton ? 1000000 : 0;
             return [{ input, score: buttonScore + selectorScore + Math.min(box.width, 2000) }];
@@ -155,27 +139,6 @@
 
         ranked.sort((left, right) => right.score - left.score);
         return ranked[0]?.input || null;
-    }
-
-    function clearPendingInput() {
-        if (pendingInputTimer) clearTimeout(pendingInputTimer);
-        pendingInput = undefined;
-        pendingForm = undefined;
-        pendingInputTimer = undefined;
-    }
-
-    function isInputSettled(input, form) {
-        if (activeBinding?.input === input && activeBinding.form === form) return true;
-        if (pendingInput === input && pendingForm === form) return pendingInputTimer === undefined;
-
-        clearPendingInput();
-        pendingInput = input;
-        pendingForm = form;
-        pendingInputTimer = setTimeout(() => {
-            pendingInputTimer = undefined;
-            mount();
-        }, INPUT_SETTLE_DELAY);
-        return false;
     }
 
     function scheduleMount() {
@@ -522,19 +485,11 @@
     function mount() {
         const input = getVisibleInput();
         if (!input) {
-            clearPendingInput();
             unbindSearchInput();
             repositionWidget();
             return;
         }
         const form = input.closest('form');
-        if (!isInputSettled(input, form)) {
-            if (activeBinding) unbindSearchInput();
-            const widget = document.getElementById('mps-root');
-            if (widget) widget.style.display = 'none';
-            return;
-        }
-        clearPendingInput();
 
         bindSearchInput(input, form);
         bindSuggestions();

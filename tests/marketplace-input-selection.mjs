@@ -117,9 +117,10 @@ const fixtures = {
   'ozon-search-occluded': {
     host: 'www.ozon.localhost',
     expected: 'hidden',
+    requireInitialBinding: true,
     setup: `setTimeout(() => {
       document.body.insertAdjacentHTML('beforeend', '<div id="image-viewer" style="position:fixed;inset:0;z-index:1000000;background:white"></div>');
-    }, 200);`,
+    }, 300);`,
     html: `
       <form id="secondary-form"><input id="secondary" name="text" style="width:180px;height:40px"></form>
       <form id="main-form" action="/search">
@@ -131,13 +132,23 @@ const fixtures = {
   'ozon-viewer-closed': {
     host: 'www.ozon.localhost',
     expected: 'main',
+    requireInitialBinding: true,
+    requireOverlayCycle: true,
     setup: `setTimeout(() => {
       document.body.insertAdjacentHTML('beforeend', '<div id="image-viewer" style="position:fixed;inset:0;z-index:1000000;background:white"></div>');
-    }, 200);
-    setTimeout(() => document.getElementById('image-viewer').remove(), 400);`,
+    }, 300);
+    setTimeout(() => {
+      const widget = document.getElementById('mps-root');
+      const main = document.getElementById('main');
+      const nativeScope = document.getElementById('native-scope');
+      document.documentElement.dataset.overlayUnbound = String(widget?.style.display === 'none'
+        && main.dataset.mpsBound !== 'true' && nativeScope.style.display !== 'none');
+    }, 450);
+    setTimeout(() => document.getElementById('image-viewer').remove(), 600);`,
     html: `
       <form id="secondary-form"><input id="secondary" name="text" style="width:180px;height:40px"></form>
       <form id="main-form" action="/search">
+        <span id="native-scope" title="Везде">Везде</span>
         <input id="main" name="text" placeholder="Искать на Ozon" style="width:650px;height:50px">
         <button type="submit">Найти</button>
       </form>`,
@@ -145,7 +156,8 @@ const fixtures = {
   'avito-main-removed': {
     host: 'www.avito.localhost',
     expected: 'hidden',
-    setup: "setTimeout(() => document.getElementById('main-form').remove(), 200);",
+    requireInitialBinding: true,
+    setup: "setTimeout(() => document.getElementById('main-form').remove(), 300);",
     html: `
       <form id="secondary-form">
         <input id="secondary" data-marker="search-form/number" placeholder="Поиск по номеру" style="width:180px;height:40px">
@@ -158,7 +170,8 @@ const fixtures = {
   'avito-main-hidden': {
     host: 'www.avito.localhost',
     expected: 'hidden',
-    setup: "setTimeout(() => { document.getElementById('main-form').style.display = 'none'; }, 200);",
+    requireInitialBinding: true,
+    setup: "setTimeout(() => { document.getElementById('main-form').style.display = 'none'; }, 300);",
     html: `
       <form id="secondary-form">
         <input id="secondary" data-marker="search-form/number" placeholder="Поиск по номеру" style="width:180px;height:40px">
@@ -187,13 +200,16 @@ const fixtures = {
   'avito-neutral-secondary-first': {
     host: 'www.avito.localhost',
     expected: 'rebound',
-    setup: `setTimeout(() => {
-      document.documentElement.dataset.secondaryWasBound = String(document.getElementById('secondary').dataset.mpsBound === 'true');
-    }, 100);
+    setup: `const recordSecondaryBinding = () => {
+      const wasBound = document.documentElement.dataset.secondaryWasBound === 'true';
+      document.documentElement.dataset.secondaryWasBound = String(wasBound || document.getElementById('secondary').dataset.mpsBound === 'true');
+    };
+    setTimeout(recordSecondaryBinding, 100);
+    setTimeout(recordSecondaryBinding, 400);
     setTimeout(() => {
       document.body.insertAdjacentHTML('afterbegin', \
         '<form id="main-form"><input id="main" data-marker="search-form/suggest" placeholder="Поиск по объявлениям" style="width:650px;height:50px"><button data-marker="search-form/submit-button" type="submit">Найти</button></form>');
-    }, 200);`,
+    }, 600);`,
     html: `
       <form id="secondary-form">
         <input id="secondary" data-marker="search-form/legacy" placeholder="Введите запрос" style="width:300px;height:40px">
@@ -243,6 +259,12 @@ const server = createServer((request, response) => {
         ${fixture.setup ?? ''}
         setTimeout(() => {
           const main = document.getElementById('main');
+          const nativeScope = document.getElementById('native-scope');
+          document.documentElement.dataset.initiallyBound = String(main?.dataset.mpsBound === 'true');
+          document.documentElement.dataset.nativeInitiallyHidden = String(!nativeScope || nativeScope.style.display === 'none');
+        }, 100);
+        setTimeout(() => {
+          const main = document.getElementById('main');
           const secondary = document.getElementById('secondary');
           const widget = document.getElementById('mps-root');
           const nativeScope = document.getElementById('native-scope');
@@ -255,10 +277,19 @@ const server = createServer((request, response) => {
           const mainSelected = main?.dataset.mpsBound === 'true' && secondary.dataset.mpsBound !== 'true';
           const hidden = (!widget || widget.style.display === 'none') && main?.dataset.mpsBound !== 'true'
             && secondary.dataset.mpsBound !== 'true' && (!nativeScope || nativeScope.style.display !== 'none');
+          const initialStateVerified = ${!fixture.requireInitialBinding}
+            || (document.documentElement.dataset.initiallyBound === 'true'
+              && document.documentElement.dataset.nativeInitiallyHidden === 'true');
+          const overlayCycleVerified = ${!fixture.requireOverlayCycle}
+            || document.documentElement.dataset.overlayUnbound === 'true';
           const rebound = ${fixture.expected === 'rebound'} && mainSelected && secondary.style.paddingLeft === ''
             && document.documentElement.dataset.secondaryWasBound === 'false'
             && !keydown.defaultPrevented && !submit.defaultPrevented && !click.defaultPrevented;
-          document.documentElement.dataset.testResult = rebound ? 'rebound' : hidden ? 'hidden' : mainSelected ? 'main' : 'secondary';
+          const expectedState = ${JSON.stringify(fixture.expected)};
+          const stateVerified = initialStateVerified && overlayCycleVerified && (
+            expectedState === 'rebound' ? rebound : expectedState === 'hidden' ? hidden : mainSelected
+          );
+          document.documentElement.dataset.testResult = stateVerified ? expectedState : 'failed';
         }, 1000);
       </script>
     </body></html>`);
