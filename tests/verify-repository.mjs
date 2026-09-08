@@ -30,6 +30,28 @@ for (const path of scripts) {
 }
 
 const readme = await readFile(new URL('../README.md', import.meta.url), 'utf8');
+const scriptsSectionStart = readme.indexOf('## Скрипты\n');
+const beginnerSectionStart = readme.indexOf('## Установка для новичка\n');
+assert.notEqual(scriptsSectionStart, -1, 'Missing scripts section');
+assert.notEqual(beginnerSectionStart, -1, 'Missing beginner installation section');
+assert.ok(scriptsSectionStart < beginnerSectionStart, 'Scripts section must precede beginner installation section');
+const scriptsSection = readme.slice(scriptsSectionStart, beginnerSectionStart);
+const expectedHeadings = [
+  '### 1. 🛒 Marketplace Cross Search',
+  '### 2. 🔎 Google → Yandex Search Button',
+  '### 3. 🔎 Yandex → Google Search Button',
+];
+let previousHeadingIndex = -1;
+for (const heading of expectedHeadings) {
+  const headingIndex = scriptsSection.indexOf(`${heading}\n`);
+  assert.ok(headingIndex > previousHeadingIndex, `Missing or out-of-order heading: ${heading}`);
+  assert.equal((scriptsSection.match(new RegExp(`^${escapeRegExp(heading)}$`, 'gm')) ?? []).length, 1);
+  previousHeadingIndex = headingIndex;
+}
+for (const label of ['**Что делает:**', '**Где работает:**', '**Как пользоваться:**']) {
+  assert.equal((scriptsSection.match(new RegExp(escapeRegExp(label), 'g')) ?? []).length, scripts.length);
+}
+assert.equal((scriptsSection.match(/\n---\n/g) ?? []).length, 2);
 assert.equal((readme.match(/logo=tampermonkey/g) ?? []).length, scripts.length);
 assert.equal((readme.match(/style=for-the-badge/g) ?? []).length, scripts.length);
 for (const path of scripts) {

@@ -4,41 +4,51 @@
 
 ## Скрипты
 
-### Marketplace Cross Search
+### 1. 🛒 Marketplace Cross Search
 
-![Marketplace Cross Search на Wildberries](docs/images/marketplace-cross-search.png)
-
-**Поддерживаемые сайты:** Ozon, Wildberries, Яндекс Маркет, Авито и AliExpress.
-
-Скрипт добавляет в строку поиска меню выбора площадок. Можно отметить несколько маркетплейсов, открыть один из них стрелкой справа или запустить поиск по выбранным площадкам либо сразу везде. Результаты на других площадках открываются в новых вкладках.
+> Поиск по нескольким маркетплейсам из одной строки поиска.
 
 [![Установить Marketplace Cross Search через Tampermonkey](https://img.shields.io/badge/%D0%A3%D1%81%D1%82%D0%B0%D0%BD%D0%BE%D0%B2%D0%B8%D1%82%D1%8C-Marketplace%20Cross%20Search-2ea44f?logo=tampermonkey&logoColor=white&style=for-the-badge)](https://raw.githubusercontent.com/wyrtensi/advanced-russian-tampermonkey-scripts/main/scripts/marketplace-cross-search/marketplace-cross-search.user.js)
 
-После установки откройте поддерживаемый маркетплейс, введите запрос, раскройте значок площадки в строке поиска и выберите, где искать.
+![Marketplace Cross Search на Wildberries](docs/images/marketplace-cross-search.png)
 
-### Google → Yandex Search Button
+**Что делает:** Скрипт добавляет в строку поиска меню выбора площадок. Можно отметить несколько маркетплейсов, открыть один из них стрелкой справа или запустить поиск по выбранным площадкам либо сразу везде. Результаты на других площадках открываются в новых вкладках.
 
-![Кнопки Yandex и Markets в Google](docs/images/google-to-yandex.png)
+**Где работает:** **Поддерживаемые сайты:** Ozon, Wildberries, Яндекс Маркет, Авито и AliExpress.
 
-**Поддерживаемые сайты:** страницы поиска Google на региональных доменах, например `google.com`, `google.ru`, `google.co.uk`, `google.de`, `google.fr`, `google.es`, `google.it`, `google.ca`, `google.com.au`, `google.com.tw`, `google.co.jp`, `google.com.br` и `google.com.mx`. Этот список не исчерпывающий: все поддерживаемые региональные домены перечислены в строках `@match` установленного скрипта.
+**Как пользоваться:** После установки откройте поддерживаемый маркетплейс, введите запрос, раскройте значок площадки в строке поиска и выберите, где искать.
 
-Скрипт добавляет рядом со строкой поиска кнопки **Yandex** и **Markets**. Первая открывает тот же запрос в Яндексе, вторая — в Ozon, Wildberries и Яндекс Маркете.
+---
+
+### 2. 🔎 Google → Yandex Search Button
+
+> Быстрый переход из поиска Google в Яндекс и на маркетплейсы.
 
 [![Установить Google → Yandex через Tampermonkey](https://img.shields.io/badge/%D0%A3%D1%81%D1%82%D0%B0%D0%BD%D0%BE%D0%B2%D0%B8%D1%82%D1%8C-Google%20%E2%86%92%20Yandex-2ea44f?logo=tampermonkey&logoColor=white&style=for-the-badge)](https://raw.githubusercontent.com/wyrtensi/advanced-russian-tampermonkey-scripts/main/scripts/google-to-yandex/google-to-yandex.user.js)
 
-Выполните поиск в Google и нажмите нужную кнопку. Для быстрого перехода в Яндекс можно использовать `Alt+Y`.
+![Кнопки Yandex и Markets в Google](docs/images/google-to-yandex.png)
 
-### Yandex → Google Search Button
+**Что делает:** Скрипт добавляет рядом со строкой поиска кнопки **Yandex** и **Markets**. Первая открывает тот же запрос в Яндексе, вторая — в Ozon, Wildberries и Яндекс Маркете.
 
-![Кнопки Google и Markets в Яндексе](docs/images/yandex-to-google.png)
+**Где работает:** **Поддерживаемые сайты:** страницы поиска Google на региональных доменах, например `google.com`, `google.ru`, `google.co.uk`, `google.de`, `google.fr`, `google.es`, `google.it`, `google.ca`, `google.com.au`, `google.com.tw`, `google.co.jp`, `google.com.br` и `google.com.mx`. Этот список не исчерпывающий: все поддерживаемые региональные домены перечислены в строках `@match` установленного скрипта.
 
-**Поддерживаемые сайты:** поиск Яндекса на доменах `yandex.ru`, `yandex.com`, `yandex.by`, `yandex.kz`, `yandex.uz`, `yandex.tm`, `yandex.tj`, `yandex.az`, `yandex.fr`, `yandex.ee`, `yandex.lt`, `yandex.lv`, `yandex.md` и `dzen.ru`.
+**Как пользоваться:** Выполните поиск в Google и нажмите нужную кнопку. Для быстрого перехода в Яндекс можно использовать `Alt+Y`.
 
-Скрипт добавляет рядом со строкой поиска кнопки **Google** и **Markets**. Первая открывает тот же запрос в Google, вторая — в Ozon, Wildberries и Яндекс Маркете.
+---
+
+### 3. 🔎 Yandex → Google Search Button
+
+> Быстрый переход из поиска Яндекса в Google и на маркетплейсы.
 
 [![Установить Yandex → Google через Tampermonkey](https://img.shields.io/badge/%D0%A3%D1%81%D1%82%D0%B0%D0%BD%D0%BE%D0%B2%D0%B8%D1%82%D1%8C-Yandex%20%E2%86%92%20Google-2ea44f?logo=tampermonkey&logoColor=white&style=for-the-badge)](https://raw.githubusercontent.com/wyrtensi/advanced-russian-tampermonkey-scripts/main/scripts/yandex-to-google/yandex-to-google.user.js)
 
-Выполните поиск в Яндексе и нажмите нужную кнопку. Для быстрого перехода в Google можно использовать `Alt+G`.
+![Кнопки Google и Markets в Яндексе](docs/images/yandex-to-google.png)
+
+**Что делает:** Скрипт добавляет рядом со строкой поиска кнопки **Google** и **Markets**. Первая открывает тот же запрос в Google, вторая — в Ozon, Wildberries и Яндекс Маркете.
+
+**Где работает:** **Поддерживаемые сайты:** поиск Яндекса на доменах `yandex.ru`, `yandex.com`, `yandex.by`, `yandex.kz`, `yandex.uz`, `yandex.tm`, `yandex.tj`, `yandex.az`, `yandex.fr`, `yandex.ee`, `yandex.lt`, `yandex.lv`, `yandex.md` и `dzen.ru`.
+
+**Как пользоваться:** Выполните поиск в Яндексе и нажмите нужную кнопку. Для быстрого перехода в Google можно использовать `Alt+G`.
 
 ## Установка для новичка
 
