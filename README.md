@@ -12,7 +12,7 @@
 
 Скрипт добавляет в строку поиска меню выбора площадок. Можно отметить несколько маркетплейсов, открыть один из них стрелкой справа или запустить поиск по выбранным площадкам либо сразу везде. Результаты на других площадках открываются в новых вкладках.
 
-[Установить Marketplace Cross Search](https://raw.githubusercontent.com/wyrtensi/advanced-russian-tampermonkey-scripts/main/scripts/marketplace-cross-search/marketplace-cross-search.user.js)
+[![Установить Marketplace Cross Search через Tampermonkey](https://img.shields.io/badge/%D0%A3%D1%81%D1%82%D0%B0%D0%BD%D0%BE%D0%B2%D0%B8%D1%82%D1%8C-Marketplace%20Cross%20Search-2ea44f?logo=tampermonkey&logoColor=white&style=for-the-badge)](https://raw.githubusercontent.com/wyrtensi/advanced-russian-tampermonkey-scripts/main/scripts/marketplace-cross-search/marketplace-cross-search.user.js)
 
 После установки откройте поддерживаемый маркетплейс, введите запрос, раскройте значок площадки в строке поиска и выберите, где искать.
 
@@ -24,7 +24,7 @@
 
 Скрипт добавляет рядом со строкой поиска кнопки **Yandex** и **Markets**. Первая открывает тот же запрос в Яндексе, вторая — в Ozon, Wildberries и Яндекс Маркете.
 
-[Установить Google → Yandex Search Button](https://raw.githubusercontent.com/wyrtensi/advanced-russian-tampermonkey-scripts/main/scripts/google-to-yandex/google-to-yandex.user.js)
+[![Установить Google → Yandex через Tampermonkey](https://img.shields.io/badge/%D0%A3%D1%81%D1%82%D0%B0%D0%BD%D0%BE%D0%B2%D0%B8%D1%82%D1%8C-Google%20%E2%86%92%20Yandex-2ea44f?logo=tampermonkey&logoColor=white&style=for-the-badge)](https://raw.githubusercontent.com/wyrtensi/advanced-russian-tampermonkey-scripts/main/scripts/google-to-yandex/google-to-yandex.user.js)
 
 Выполните поиск в Google и нажмите нужную кнопку. Для быстрого перехода в Яндекс можно использовать `Alt+Y`.
 
@@ -36,7 +36,7 @@
 
 Скрипт добавляет рядом со строкой поиска кнопки **Google** и **Markets**. Первая открывает тот же запрос в Google, вторая — в Ozon, Wildberries и Яндекс Маркете.
 
-[Установить Yandex → Google Search Button](https://raw.githubusercontent.com/wyrtensi/advanced-russian-tampermonkey-scripts/main/scripts/yandex-to-google/yandex-to-google.user.js)
+[![Установить Yandex → Google через Tampermonkey](https://img.shields.io/badge/%D0%A3%D1%81%D1%82%D0%B0%D0%BD%D0%BE%D0%B2%D0%B8%D1%82%D1%8C-Yandex%20%E2%86%92%20Google-2ea44f?logo=tampermonkey&logoColor=white&style=for-the-badge)](https://raw.githubusercontent.com/wyrtensi/advanced-russian-tampermonkey-scripts/main/scripts/yandex-to-google/yandex-to-google.user.js)
 
 Выполните поиск в Яндексе и нажмите нужную кнопку. Для быстрого перехода в Google можно использовать `Alt+G`.
 

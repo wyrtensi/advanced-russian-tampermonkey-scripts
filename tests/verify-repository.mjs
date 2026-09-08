@@ -8,6 +8,13 @@ const scripts = [
   'scripts/google-to-yandex/google-to-yandex.user.js',
   'scripts/yandex-to-google/yandex-to-google.user.js',
 ];
+const badgeNames = [
+  'Marketplace Cross Search',
+  'Google → Yandex',
+  'Yandex → Google',
+];
+
+const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 for (const path of scripts) {
   const source = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
@@ -23,8 +30,19 @@ for (const path of scripts) {
 }
 
 const readme = await readFile(new URL('../README.md', import.meta.url), 'utf8');
+assert.equal((readme.match(/logo=tampermonkey/g) ?? []).length, scripts.length);
+assert.equal((readme.match(/style=for-the-badge/g) ?? []).length, scripts.length);
 for (const path of scripts) {
   assert.ok(readme.includes(`${rawRoot}/${path}`), `Missing install link for ${path}`);
+}
+
+for (const [index, path] of scripts.entries()) {
+  const rawUrl = `${rawRoot}/${path}`;
+  const badgeAlt = `Установить ${badgeNames[index]} через Tampermonkey`;
+  const badgeButtonPattern = new RegExp(
+    `\\[!\\[${escapeRegExp(badgeAlt)}\\]\\([^\\n)]+\\)\\]\\(${escapeRegExp(rawUrl)}\\)`,
+  );
+  assert.match(readme, badgeButtonPattern, `Missing badge button for ${badgeNames[index]}`);
 }
 
 const images = [
