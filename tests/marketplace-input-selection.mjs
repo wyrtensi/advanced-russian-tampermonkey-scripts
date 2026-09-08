@@ -123,6 +123,7 @@ const fixtures = {
     html: `
       <form id="secondary-form"><input id="secondary" name="text" style="width:180px;height:40px"></form>
       <form id="main-form" action="/search">
+        <span id="native-scope" title="Везде">Везде</span>
         <input id="main" name="text" placeholder="Искать на Ozon" style="width:650px;height:50px">
         <button type="submit">Найти</button>
       </form>`,
@@ -171,6 +172,9 @@ const fixtures = {
     host: 'www.avito.localhost',
     expected: 'rebound',
     setup: `setTimeout(() => {
+      document.documentElement.dataset.secondaryWasBound = String(document.getElementById('secondary').dataset.mpsBound === 'true');
+    }, 100);
+    setTimeout(() => {
       document.body.insertAdjacentHTML('afterbegin', \
         '<form id="main-form"><input id="main" data-marker="search-form/suggest" placeholder="Поиск по объявлениям" style="width:650px;height:50px"><button data-marker="search-form/submit-button" type="submit">Найти</button></form>');
     }, 200);`,
@@ -178,6 +182,39 @@ const fixtures = {
       <form id="secondary-form">
         <input id="secondary" data-marker="search-form/legacy" placeholder="Поиск в разделе" style="width:300px;height:40px">
         <button id="secondary-button" data-marker="search-form/submit-button" type="button">Искать в разделе</button>
+      </form>`,
+  },
+  'avito-neutral-secondary-first': {
+    host: 'www.avito.localhost',
+    expected: 'rebound',
+    setup: `setTimeout(() => {
+      document.documentElement.dataset.secondaryWasBound = String(document.getElementById('secondary').dataset.mpsBound === 'true');
+    }, 100);
+    setTimeout(() => {
+      document.body.insertAdjacentHTML('afterbegin', \
+        '<form id="main-form"><input id="main" data-marker="search-form/suggest" placeholder="Поиск по объявлениям" style="width:650px;height:50px"><button data-marker="search-form/submit-button" type="submit">Найти</button></form>');
+    }, 200);`,
+    html: `
+      <form id="secondary-form">
+        <input id="secondary" data-marker="search-form/legacy" placeholder="Введите запрос" style="width:300px;height:40px">
+        <button id="secondary-button" data-marker="search-form/submit-button" type="button">Искать</button>
+      </form>`,
+  },
+  'avito-secondary-only': {
+    host: 'www.avito.localhost',
+    expected: 'hidden',
+    html: `
+      <form id="secondary-form">
+        <input id="secondary" data-marker="search-form/number" placeholder="Поиск по номеру" style="width:300px;height:40px">
+        <button data-marker="search-form/submit-button" type="button">Искать номер</button>
+      </form>`,
+  },
+  'yandex-secondary-only': {
+    host: 'market.yandex.localhost',
+    expected: 'hidden',
+    html: `
+      <form id="secondary-form">
+        <input id="secondary" name="text" placeholder="Поиск в фильтрах" style="width:180px;height:40px">
       </form>`,
   },
 };
@@ -208,6 +245,7 @@ const server = createServer((request, response) => {
           const main = document.getElementById('main');
           const secondary = document.getElementById('secondary');
           const widget = document.getElementById('mps-root');
+          const nativeScope = document.getElementById('native-scope');
           const keydown = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
           const submit = new Event('submit', { bubbles: true, cancelable: true });
           const click = new MouseEvent('click', { bubbles: true, cancelable: true });
@@ -215,12 +253,13 @@ const server = createServer((request, response) => {
           document.getElementById('secondary-form').dispatchEvent(submit);
           document.getElementById('secondary-button')?.dispatchEvent(click);
           const mainSelected = main?.dataset.mpsBound === 'true' && secondary.dataset.mpsBound !== 'true';
-          const hidden = widget?.style.display === 'none' && main?.dataset.mpsBound !== 'true'
-            && secondary.dataset.mpsBound !== 'true';
+          const hidden = (!widget || widget.style.display === 'none') && main?.dataset.mpsBound !== 'true'
+            && secondary.dataset.mpsBound !== 'true' && (!nativeScope || nativeScope.style.display !== 'none');
           const rebound = ${fixture.expected === 'rebound'} && mainSelected && secondary.style.paddingLeft === ''
+            && document.documentElement.dataset.secondaryWasBound === 'false'
             && !keydown.defaultPrevented && !submit.defaultPrevented && !click.defaultPrevented;
           document.documentElement.dataset.testResult = rebound ? 'rebound' : hidden ? 'hidden' : mainSelected ? 'main' : 'secondary';
-        }, 700);
+        }, 1000);
       </script>
     </body></html>`);
 });
